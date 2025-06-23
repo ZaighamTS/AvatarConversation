@@ -1,6 +1,7 @@
-using UnityEngine;
 using System;
 using System.IO;
+using System.Text;
+using UnityEngine;
 
 public static class WavUtility
 {
@@ -93,4 +94,46 @@ public static class WavUtility
             return audioClip;
         }
     }
+    public static byte[] FromAudioClip(AudioClip clip)
+    {
+        MemoryStream stream = new MemoryStream();
+
+        int sampleCount = clip.samples * clip.channels;
+        int sampleRate = clip.frequency;
+        int channels = clip.channels;
+
+        // Convert float samples to 16-bit PCM
+        float[] samples = new float[sampleCount];
+        clip.GetData(samples, 0);
+        short[] intData = new short[samples.Length];
+
+        byte[] bytesData = new byte[samples.Length * 2];
+        const float rescaleFactor = 32767;
+
+        for (int i = 0; i < samples.Length; i++)
+        {
+            intData[i] = (short)(samples[i] * rescaleFactor);
+            byte[] byteArr = BitConverter.GetBytes(intData[i]);
+            byteArr.CopyTo(bytesData, i * 2);
+        }
+
+        // WAV header
+        stream.Write(Encoding.ASCII.GetBytes("RIFF"), 0, 4);
+        stream.Write(BitConverter.GetBytes(36 + bytesData.Length), 0, 4);
+        stream.Write(Encoding.ASCII.GetBytes("WAVE"), 0, 4);
+        stream.Write(Encoding.ASCII.GetBytes("fmt "), 0, 4);
+        stream.Write(BitConverter.GetBytes(16), 0, 4);
+        stream.Write(BitConverter.GetBytes((ushort)1), 0, 2); // Audio format (PCM)
+        stream.Write(BitConverter.GetBytes((ushort)channels), 0, 2);
+        stream.Write(BitConverter.GetBytes(sampleRate), 0, 4);
+        stream.Write(BitConverter.GetBytes(sampleRate * channels * 2), 0, 4); // Byte rate
+        stream.Write(BitConverter.GetBytes((ushort)(channels * 2)), 0, 2); // Block align
+        stream.Write(BitConverter.GetBytes((ushort)16), 0, 2); // Bits per sample
+        stream.Write(Encoding.ASCII.GetBytes("data"), 0, 4);
+        stream.Write(BitConverter.GetBytes(bytesData.Length), 0, 4);
+        stream.Write(bytesData, 0, bytesData.Length);
+
+        return stream.ToArray();
+    }
+
 }

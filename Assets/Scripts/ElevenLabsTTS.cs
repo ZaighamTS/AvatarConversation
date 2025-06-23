@@ -22,7 +22,7 @@ public class ElevenLabsTTS : MonoBehaviour
         var requestBody = new TextToSpeechRequest
         {
             text = text,
-            model_id = "eleven_monolingual_v1",
+            model_id = "eleven_multilingual_v2",
             voice_settings = new VoiceSettings
             {
                 stability = 0,
@@ -72,6 +72,7 @@ public class ElevenLabsTTS : MonoBehaviour
 
     IEnumerator StopAudio(float time)
     {
+        ChatManager.CM.loadingObjects[1].SetActive(false);
         yield return new WaitForSeconds(time);
         ChatManager.CM.AvatarAnimator.SetBool("answering", false);
     }
