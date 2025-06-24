@@ -1690,8 +1690,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d3ee9559b6372c4a8f29d30d407b110, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  apiKey: sk_47d89f38e2123dbccb914949bb094690cc6d2bfb6024afac
-  voiceId: IKne3meq5aSn9XLyUdCD
+  apiKey: sk_c13885741f555f0f46748298105c57445a4bc357f6bffc6d
+  voiceId: A9ATTqUUQ6GHu0coCz8t
   audioSource: {fileID: 821150634}
 --- !u!4 &821150633
 Transform:
@@ -2267,7 +2267,7 @@ GameObject:
   - component: {fileID: 1069506444}
   - component: {fileID: 1069506443}
   m_Layer: 0
-  m_Name: Directional Light (1)
+  m_Name: 'Directional Light '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
