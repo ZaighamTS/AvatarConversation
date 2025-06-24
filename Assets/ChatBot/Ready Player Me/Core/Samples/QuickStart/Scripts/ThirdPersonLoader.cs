@@ -33,6 +33,7 @@ namespace ReadyPlayerMe.Samples.QuickStart
             }
             if (loadOnStart)
             {
+                previewAvatar.SetActive(false);
                 LoadAvatar(avatarUrl);
             }
         }
