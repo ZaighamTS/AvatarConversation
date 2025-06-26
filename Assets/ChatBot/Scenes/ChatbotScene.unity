@@ -2297,7 +2297,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba6cb1de87d69bd46baa42a42f1a1798, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  openAI_APIKey: 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
+  openAI_APIKey: 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
   inputField: {fileID: 39878764}
   chatLog: {fileID: 949366420}
   scrollRect: {fileID: 843589708}
@@ -3106,6 +3106,10 @@ PrefabInstance:
       propertyPath: loadOnStart
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5079932738637831229, guid: b5e780cfda18ab9469c25deff06532aa, type: 3}
+      propertyPath: avatarLoading
+      value: 
+      objectReference: {fileID: 1521910891}
     - target: {fileID: 5079932738637831229, guid: b5e780cfda18ab9469c25deff06532aa, type: 3}
       propertyPath: previewAvatar
       value: 

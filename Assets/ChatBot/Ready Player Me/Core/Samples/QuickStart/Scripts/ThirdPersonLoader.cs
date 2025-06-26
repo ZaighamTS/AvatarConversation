@@ -18,6 +18,7 @@ namespace ReadyPlayerMe.Samples.QuickStart
         private bool loadOnStart = true;
         [SerializeField][Tooltip("Preview avatar to display until avatar loads. Will be destroyed after new avatar is loaded")]
         private GameObject previewAvatar;
+        public GameObject avatarLoading;
 
         public event Action OnLoadComplete;
         
@@ -30,6 +31,7 @@ namespace ReadyPlayerMe.Samples.QuickStart
             if (previewAvatar != null)
             {
                 SetupAvatar(previewAvatar);
+                avatarLoading.SetActive(false);
             }
             if (loadOnStart)
             {

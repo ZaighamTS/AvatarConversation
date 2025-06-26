@@ -1,4 +1,4 @@
-using ArabicSupport;
+﻿using ArabicSupport;
 using Newtonsoft.Json;
 using ReadyPlayerMe.Core;
 using ReadyPlayerMe.Samples.QuickStart;
@@ -117,50 +117,125 @@ public class ChatManager : MonoBehaviour
         //chatLog.text += $"\n<b>You:</b> {userMessage}";
         StartCoroutine(SendToOpenAI(userMessage));
     }
-    
+
     IEnumerator SendToOpenAI(string message)
     {
-        string url = "https://api.openai.com/v1/chat/completions";
+        string threadId = null;
+        string apiKey = openAI_APIKey; // Your secret key
 
-        var requestData = new RequestData
+        // STEP 1: Create a thread
+        UnityWebRequest createThread = new UnityWebRequest("https://api.openai.com/v1/threads", "POST");
+        createThread.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes("{}")); // empty JSON
+        createThread.downloadHandler = new DownloadHandlerBuffer();
+        createThread.SetRequestHeader("Authorization", "Bearer " + apiKey);
+        createThread.SetRequestHeader("Content-Type", "application/json");
+        createThread.SetRequestHeader("OpenAI-Beta", "assistants=v2"); // ✅ Required for Assistants API v2
+
+        yield return createThread.SendWebRequest();
+
+        // Debug the raw response
+        Debug.Log("Thread Response Code: " + createThread.responseCode);
+        Debug.Log("Thread Response Text: " + createThread.downloadHandler.text);
+
+        if (createThread.result != UnityWebRequest.Result.Success)
         {
-            //model = "gpt-3.5-turbo",
-            model = "gpt-4o",
-            messages = new List<Message>
-            {
-                new Message { role = "system", content = "You are a helpful AI assistant." },
-                new Message { role = "user", content = message }
-            }
+            Debug.LogError("Thread creation failed: " + createThread.error);
+            yield break;
+        }
+
+        threadId = JsonUtility.FromJson<ThreadResponse>(createThread.downloadHandler.text).id;
+
+        // STEP 2: Add user message to thread
+        ThreadMessage userMessage = new ThreadMessage
+        {
+            role = "user",
+            content = message
         };
 
-        string json = JsonConvert.SerializeObject(requestData);
+        string messageJson = JsonUtility.ToJson(userMessage);
+        var addMessage = new UnityWebRequest($"https://api.openai.com/v1/threads/{threadId}/messages", "POST");
+        addMessage.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(messageJson));
+        addMessage.downloadHandler = new DownloadHandlerBuffer();
+        addMessage.SetRequestHeader("Authorization", "Bearer " + apiKey);
+        addMessage.SetRequestHeader("Content-Type", "application/json");
+        addMessage.SetRequestHeader("OpenAI-Beta", "assistants=v2");
 
-        UnityWebRequest request = new UnityWebRequest(url, "POST");
-        byte[] body = Encoding.UTF8.GetBytes(json);
-        request.uploadHandler = new UploadHandlerRaw(body);
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
-        request.SetRequestHeader("Authorization", $"Bearer {openAI_APIKey}");
+        yield return addMessage.SendWebRequest();
 
-        yield return request.SendWebRequest();
-        
-        if (request.result != UnityWebRequest.Result.Success)
+        if (addMessage.result != UnityWebRequest.Result.Success)
         {
-            Debug.LogError("OpenAI error: " + request.error);
-            AppendMessage("AI", "Error.");
-            //chatLog.text += $"\n<b>AI:</b> Error.";
-            AvatarAnimator.SetBool("answering", false);
+            Debug.LogError("Message adding failed: " + addMessage.error);
+            Debug.Log("Message Body Sent: " + messageJson); // 🧪 Optional debug log
+            yield break;
         }
-        else
+
+        // STEP 3: Run the Assistant
+        RunRequest runRequest = new RunRequest
         {
-            string result = request.downloadHandler.text;
-            var response = JsonConvert.DeserializeObject<ResponseData>(result);
-            string reply = response.choices[0].message.content;
-            loadingObjects[1].SetActive(true);
-            StartCoroutine(tts.Speak(reply));
-            AppendMessage("AI", reply);
-            //chatLog.text += $"\n<b>AI:</b> {reply}";
+            assistant_id = "asst_opgp81D5CblZ2pPajdEi03aC"
+        };
+
+        string runJson = JsonUtility.ToJson(runRequest);
+        UnityWebRequest runWebRequest = new UnityWebRequest($"https://api.openai.com/v1/threads/{threadId}/runs", "POST");
+        runWebRequest.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(runJson));
+        runWebRequest.downloadHandler = new DownloadHandlerBuffer();
+        runWebRequest.SetRequestHeader("Authorization", "Bearer " + apiKey);
+        runWebRequest.SetRequestHeader("Content-Type", "application/json");
+        runWebRequest.SetRequestHeader("OpenAI-Beta", "assistants=v2");
+
+        yield return runWebRequest.SendWebRequest();
+
+        if (runWebRequest.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Run request failed: " + runWebRequest.error);
+            Debug.Log("Run JSON Sent: " + runJson);
+            yield break;
         }
+
+        RunResponse runResponse = JsonUtility.FromJson<RunResponse>(runWebRequest.downloadHandler.text);
+        string runId = runResponse.id;
+
+        // STEP 4: Poll the run until it's complete
+        string runStatus = "queued";
+        while (runStatus != "completed")
+        {
+            UnityWebRequest checkRun = UnityWebRequest.Get($"https://api.openai.com/v1/threads/{threadId}/runs/{runId}");
+            checkRun.SetRequestHeader("Authorization", "Bearer " + apiKey);
+            checkRun.SetRequestHeader("OpenAI-Beta", "assistants=v2");
+            checkRun.downloadHandler = new DownloadHandlerBuffer();
+            yield return checkRun.SendWebRequest();
+
+            if (checkRun.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Run status check failed: " + checkRun.error);
+                yield break;
+            }
+
+            runStatus = JsonUtility.FromJson<RunResponse>(checkRun.downloadHandler.text).status;
+            yield return new WaitForSeconds(1f);
+        }
+
+        // STEP 5: Retrieve assistant's response
+        UnityWebRequest getMessages = UnityWebRequest.Get($"https://api.openai.com/v1/threads/{threadId}/messages");
+        getMessages.SetRequestHeader("Authorization", "Bearer " + apiKey);
+        getMessages.SetRequestHeader("OpenAI-Beta", "assistants=v2");
+        getMessages.downloadHandler = new DownloadHandlerBuffer();
+
+        yield return getMessages.SendWebRequest();
+
+        if (getMessages.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("Get messages failed: " + getMessages.error);
+            Debug.Log("Response: " + getMessages.downloadHandler.text); // 🧪 see actual error
+            yield break;
+        }
+
+        MessagesResponse messagesResponse = JsonUtility.FromJson<MessagesResponse>(getMessages.downloadHandler.text);
+        string reply = messagesResponse.data[0].content[0].text.value;
+
+        AppendMessage("AI", reply);
+        loadingObjects[1].SetActive(true);
+        StartCoroutine(tts.Speak(reply));
     }
 
     private void AppendMessage(string sender, string message)
@@ -253,4 +328,46 @@ public class ChatManager : MonoBehaviour
         public string text;
     }
 
+    [System.Serializable]
+    public class ThreadResponse { public string id; }
+
+    [System.Serializable]
+    public class ThreadMessage
+    {
+        public string role;
+        public string content;
+    }
+
+    [System.Serializable]
+    public class RunResponse { public string id; public string status; }
+
+    [System.Serializable]
+    public class MessagesResponse
+    {
+        public MessageData[] data;
+    }
+
+    [System.Serializable]
+    public class MessageData
+    {
+        public MessageContent[] content;
+    }
+
+    [System.Serializable]
+    public class MessageContent
+    {
+        public TextContent text;
+    }
+
+    [System.Serializable]
+    public class TextContent
+    {
+        public string value;
+    }
+
+    [System.Serializable]
+    public class RunRequest
+    {
+        public string assistant_id;
+    }
 }
