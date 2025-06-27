@@ -2297,7 +2297,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba6cb1de87d69bd46baa42a42f1a1798, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  openAI_APIKey: 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
+  openAI_APIKey: 
   inputField: {fileID: 39878764}
   chatLog: {fileID: 949366420}
   scrollRect: {fileID: 843589708}

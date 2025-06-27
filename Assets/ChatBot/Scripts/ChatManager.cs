@@ -12,8 +12,9 @@ using UnityEngine.UI;
 
 public class ChatManager : MonoBehaviour
 {
-    public static ChatManager CM; 
+    public static ChatManager CM;
 
+    [HideInInspector]
     public string openAI_APIKey = "your-api-key";
     public TMP_InputField inputField;
     public TextMeshProUGUI chatLog;
@@ -64,6 +65,17 @@ public class ChatManager : MonoBehaviour
     private void Awake()
     {
         CM = this;
+        TextAsset keyFile = Resources.Load<TextAsset>("openai_key"); // No .txt extension
+
+        if (keyFile != null)
+        {
+            openAI_APIKey = keyFile.text.Trim();
+            Debug.Log("✅ OpenAI key loaded from Resources");
+        }
+        else
+        {
+            Debug.LogError("❌ openai_key.txt not found in Resources folder!");
+        }
     }
 
     private void Update()
@@ -140,6 +152,7 @@ public class ChatManager : MonoBehaviour
         if (createThread.result != UnityWebRequest.Result.Success)
         {
             Debug.LogError("Thread creation failed: " + createThread.error);
+            AvatarAnimator.SetBool("answering", false);
             yield break;
         }
 
@@ -166,6 +179,7 @@ public class ChatManager : MonoBehaviour
         {
             Debug.LogError("Message adding failed: " + addMessage.error);
             Debug.Log("Message Body Sent: " + messageJson); // 🧪 Optional debug log
+            AvatarAnimator.SetBool("answering", false);
             yield break;
         }
 
@@ -189,6 +203,7 @@ public class ChatManager : MonoBehaviour
         {
             Debug.LogError("Run request failed: " + runWebRequest.error);
             Debug.Log("Run JSON Sent: " + runJson);
+            AvatarAnimator.SetBool("answering", false);
             yield break;
         }
 
@@ -208,6 +223,7 @@ public class ChatManager : MonoBehaviour
             if (checkRun.result != UnityWebRequest.Result.Success)
             {
                 Debug.LogError("Run status check failed: " + checkRun.error);
+                AvatarAnimator.SetBool("answering", false);
                 yield break;
             }
 
@@ -227,12 +243,14 @@ public class ChatManager : MonoBehaviour
         {
             Debug.LogError("Get messages failed: " + getMessages.error);
             Debug.Log("Response: " + getMessages.downloadHandler.text); // 🧪 see actual error
+            AvatarAnimator.SetBool("answering", false);
             yield break;
         }
 
         MessagesResponse messagesResponse = JsonUtility.FromJson<MessagesResponse>(getMessages.downloadHandler.text);
         string reply = messagesResponse.data[0].content[0].text.value;
 
+        AvatarAnimator.SetBool("answering", false);
         AppendMessage("AI", reply);
         loadingObjects[1].SetActive(true);
         StartCoroutine(tts.Speak(reply));
